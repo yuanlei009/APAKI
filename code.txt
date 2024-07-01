@@ -1,0 +1,70 @@
+#Title: Early prediction of Acute Pancreatitis with Acute Kidney Injury Using Abdominal Contrast-enhanced CT Features: multi-site retrospective study
+# Writer: LeiYuan
+#Date: 20/12/2023
+#Pipeline: feature extraction--> feature selection -->model construction --->Model Assessment --> Model Calibration
+##step 01 Feature extraction
+the radiomics features could be extracted in two ways：
+(1) using 3D slicer to extract the radiomics features, which is aslo using the open-source python package for the extraction of Radiomics features 
+(2) using pyradiomics package; 
+
+##step 02 Feature selection
+# In this study, the LASSO along with the bootstrap method was employed to assess the importance of variables, firstly. Subsequently, univariable and multivariate logistic regression #analysis was applied to select the most statistically significant radiomics features related to the AP-AKI
+#step 02-1 feature reduction by LASSO
+library(readr)
+library(glmnet)
+#load the data
+apaki <- read_csv("apaki.csv")
+x <- as.matrix(apaki[,3:1939])
+y <- as.matrix(apaki[,1])
+#plot the lasso, type lamdba
+ridge <- glmnet(x, y, family = "gaussian", alpha = 0)
+plot(ridge,xvar = "lambda", label = TRUE)
+
+#cross validation
+cvfit=cv.glmnet(x,y)
+plot(cvfit)
+# after lasso algorithm, we got 12 radiomics features linked with AP-AKI
+
+#step 02-2 univariable and multivariate  logistic regression by autoReg package
+library(autoReg)
+# univariable logistic regression using autoReg package
+gaze(aki~.,data=apaki)
+# after univariable logistic regression, we got 7 radiomics features 
+fit <- glm(aki~.,data=apaki[,(7 radiomics features)], family = "binomial")
+summary(fit)
+autoReg(fit)
+#get the 6 optimal radiomics features and display
+autoReg(fit, uni=TRUE, multi = TRUE, final = TRUE)
+
+#step 03 model construciton
+#In this study, an XGBoost model (denoted by XGBM) was constructed using the optimal features selected on the training set.
+
+library(xgboost)
+ind = sample(2,nrow(APAKI),replace = TRUE,prob = c(0.7,0.3))
+
+trainset = biopsy[ind == 1,]
+testset = biopsy[ind == 2,]
+
+dtrain <- xgb.DMatrix(as.matrix(trainset[,-10]),label=as.matrix(trainset[,1]))
+dtest <- xgb.DMatrix(as.matrix(testset[,-10]),label=as.matrix(testset[,1]))
+#control = trainControl(method = "boot",number = 10,repeats = 3)
+param <- list(
+              max_depth = 3, 
+              eta = 0.8, 
+              verbose = 0, 
+              nthread = 2,
+              objective = "binary:logistic", 
+              eval_metric = "auc",
+              silent = 0,
+              booster = 'gbtree'
+              )
+model <- xgb.train(
+                   param,
+                   dtrain,
+                   nrounds = 30
+                   )
+
+$step 05 Model calibration
+
+
+
